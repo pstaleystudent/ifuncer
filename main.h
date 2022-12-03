@@ -1,3 +1,6 @@
+#include <vector>
+#include <string>
+using namespace std;
 #pragma once
 /*
 todo:
@@ -20,4 +23,5 @@ toggle archetecture switch
 arbitrary optimization switches
 */
 int main(int argc, char* argv[]);
+vector<string> getfuncs(string filename);
 
