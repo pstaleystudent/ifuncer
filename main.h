@@ -1,5 +1,5 @@
-#include <vector>
 #include <string>
+#include <vector>
 using namespace std;
 #pragma once
 /*
@@ -23,5 +23,6 @@ toggle archetecture switch
 arbitrary optimization switches
 */
 int main(int argc, char* argv[]);
-vector<string> getfuncs(string filename);
-
+//vector<string> getfuncs(string filename);
+std::string exec(const char* cmd);
+vector<string*> tokenize (string& in, string& delims);
