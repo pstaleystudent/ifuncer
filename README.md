@@ -18,3 +18,4 @@ function.o:	function.c
 - Currently does not support any options, nor absolute file paths as input.
 - May require that function names in the file are not used elsewhere in the file? Not tested.
 - Can probably produce side effects with other GCC tools, only intended for use with standard functions.
+- If you somehow used a $ in a function name, this will probably fill up your hard drive.
