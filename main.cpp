@@ -7,6 +7,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <cstring>
 #include <array>
 #include <fstream>
 #include <unistd.h>
@@ -15,7 +16,7 @@ using namespace std;
 int main(int argc, char* argv[]) {
 	if (argc < 2)
 		cout << "No filename supplied\n";
-	if (argc < 2 || argc > 4 || !argv[3].equals("-o")) {
+	if (argc < 2 || argc > 4 || (argc > 2  &&strcmp(argv[2],"-o") != 0)) {
 		cout << "Usage: ifuncer filename [-o outputloc]\n";
 		return 1;
 	}
@@ -27,30 +28,31 @@ int main(int argc, char* argv[]) {
 	string outName;
 	if (fileName[0] == '/') {
 		//absolute in path
-		int lastSlashLoc = 0;
-		for (int i = 1; i < fileName.length; i++)
+		std::__cxx11::basic_string<char>::size_type lastSlashLoc = 0;
+		for (std::__cxx11::basic_string<char>::size_type i = 1; i < fileName.length(); i++)
 			if (fileName[i] == '/')
 				lastSlashLoc = i;
-		filePath = fileName.resize(lastSlashLoc + 1);
+		filePath = fileName;
+		filePath.resize(lastSlashLoc + 1);
 		fileName.erase(lastSlashLoc);
 	}
 	outPath = filePath;
 	if (out_path_specified) {
-		outName = argv[4];
+		outName = argv[3];
 		if (outName[0] == '/') {
 			//absolute out path
-			int lastSlashLoc = 0;
-			for (int i = 1; i < outName.length; i++)
+			std::__cxx11::basic_string<char>::size_type lastSlashLoc = 0;
+			for (std::__cxx11::basic_string<char>::size_type i = 1; i < outName.length(); i++)
 				if (outName[i] == '/')
 					lastSlashLoc = i;
-			outPath = outName.resize(lastSlashLoc + 1);
+			outPath = outName;
+			outPath.resize(lastSlashLoc + 1);
 			outName.erase(lastSlashLoc);
 		}
 	} else
 		outName = fileName;
-
+    outName.resize(outName.length() - 2);
 	fileName.resize(fileName.length() - 2);
-
 	//capture symbol table
 	string command = "gcc -c -x c -O3 " + filePath + fileName + ".c -o " + outPath + outName + ".o";
 	system(command.c_str());
@@ -60,10 +62,11 @@ int main(int argc, char* argv[]) {
 
 	//capture names
 	vector<string*> functions;
-	for (long unsigned int i = 1; i < table.size() - 1; i+=3)
-		if ((table[i])[0] == "T")
+	for (long unsigned int i = 1; i < table.size() - 1; i+=1) {
+		if (table[i]->compare("T") == 0) {
 			functions.push_back(table[i + 1]);
-	
+		}
+	}
 	//------------------------------------------------COMPILE------------------------------------------------
 	//SVE2
 	string argument;
@@ -97,7 +100,7 @@ int main(int argc, char* argv[]) {
 	for (long unsigned int i = 0; i < functions.size(); i++) {
 		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_NONE";
 	}
-	command = "gcc -c -x c -O3 -march=armv8" + argument + " " + filePath + fileName 
+	command = "gcc -c -x c -O3 " + argument + " " + filePath + fileName 
 		+ ".c -o " + outPath + "_IFUNCER_" + outName + "_NONE"+ ".o";
 	cout << command << '\n';
 	system(command.c_str());
@@ -116,17 +119,17 @@ int main(int argc, char* argv[]) {
 		string fName = *functions[i];
 		replaceFile(sourcePath + "_resolver.c", outPath + "_IFUNCER_RESOLVE_" + fName + ".c", "$", fName);
 		command = "gcc -c -x c " + outPath + "_IFUNCER_RESOLVE_" + fName + ".c";
+		cout << command << '\n';
 		system(command.c_str());
 	}
 	//whew, laddie
 	command = "ld -r -o " + outName + ".o";
-	for (long unsigned int i = 0; i < functions.size(); i++) {
+	for (long unsigned int i = 0; i < functions.size(); i++)
 		command = command + " " + outPath + "_IFUNCER_RESOLVE_" + *functions[i] + ".o";
-		command = command + " " + outPath + "_IFUNCER_" + outName + "_NONE"+ ".o";
-		command = command + " " + outPath + "_IFUNCER_" + outName + "_SIMD"+ ".o";
-		command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE"+ ".o";
-		command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE2"+ ".o";
-	}
+	command = command + " " + outPath + "_IFUNCER_" + outName + "_NONE"+ ".o";
+	command = command + " " + outPath + "_IFUNCER_" + outName + "_SIMD"+ ".o";
+	command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE"+ ".o";
+	command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE2"+ ".o";
 	cout << command << '\n';
 	system(command.c_str());
 	cleanup(outPath);
