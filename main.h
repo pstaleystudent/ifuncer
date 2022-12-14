@@ -28,3 +28,4 @@ std::string exec(const char* cmd);
 vector<string*> tokenize (string& in, string& delims);
 void replaceFile(string f1, string f2, string oldString, string newString);
 void cleanup(string path);
+string resolve_path(boolean out, string inPath, string inName, string prefix, string suffix, string outPath, string outName)

@@ -6,7 +6,7 @@
 //extern void $();
 extern void _IFUNCER_$_SVE2();
 extern void _IFUNCER_$_SVE();
-extern void _IFUNCER_$_NEON();
+extern void _IFUNCER_$_SIMD();
 extern void _IFUNCER_$_NONE();
 extern void $() __attribute__((ifunc ("resolve_$")));
 static void *resolve_$(void) {
@@ -23,7 +23,7 @@ static void *resolve_$(void) {
     }
     if(cap1 & HWCAP_ASIMD){
         printf("_RESOLVER: Resolved ASIMD\n");
-        return _IFUNCER_$_NEON;
+        return _IFUNCER_$_SIMD;
     }
     printf("_RESOLVER: Resolved NONE\n");
     return _IFUNCER_$_NONE;

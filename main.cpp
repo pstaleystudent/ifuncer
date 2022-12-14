@@ -13,19 +13,48 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-	if (argc < 2) {
+	if (argc < 2)
 		cout << "No filename supplied\n";
+	if (argc < 2 || argc > 4 || !argv[3].equals("-o")) {
+		cout << "Usage: ifuncer filename [-o outputloc]\n";
 		return 1;
 	}
+	bool out_path_specified = (argc == 4);
 	string delims = " \n";
-	string filePath = filesystem::current_path().u8string() + "/"; //BUG - absolute paths not supported
+	string filePath = filesystem::current_path().u8string() + "/";
 	string fileName = argv[1];
+	string outPath;
+	string outName;
+	if (fileName[0] == '/') {
+		//absolute in path
+		int lastSlashLoc = 0;
+		for (int i = 1; i < fileName.length; i++)
+			if (fileName[i] == '/')
+				lastSlashLoc = i;
+		filePath = fileName.resize(lastSlashLoc + 1);
+		fileName.erase(lastSlashLoc);
+	}
+	outPath = filePath;
+	if (out_path_specified) {
+		outName = argv[4];
+		if (outName[0] == '/') {
+			//absolute out path
+			int lastSlashLoc = 0;
+			for (int i = 1; i < outName.length; i++)
+				if (outName[i] == '/')
+					lastSlashLoc = i;
+			outPath = outName.resize(lastSlashLoc + 1);
+			outName.erase(lastSlashLoc);
+		}
+	} else
+		outName = fileName;
+
 	fileName.resize(fileName.length() - 2);
 
 	//capture symbol table
-	string command = "gcc -c -x c -O3 " + filePath + fileName + ".c -o " + filePath + fileName + ".o";
+	string command = "gcc -c -x c -O3 " + filePath + fileName + ".c -o " + outPath + outName + ".o";
 	system(command.c_str());
-	command = "nm " + filePath + fileName + ".o";
+	command = "nm " + outPath + outName + ".o";
 	string symbolTable = exec(command.c_str());
 	vector<string*> table = tokenize(symbolTable, delims);
 
@@ -42,7 +71,7 @@ int main(int argc, char* argv[]) {
 		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_SVE2";
 	}
 	command = "gcc -c -x c -O3 -march=armv8-a+sve2" + argument + " " + filePath + fileName 
-		+ ".c -o " + filePath + "_IFUNCER_" + fileName + "_SVE2"+ ".o";
+		+ ".c -o " + outPath + "_IFUNCER_" + outName + "_SVE2"+ ".o";
 	cout << command << '\n';
 	system(command.c_str());
 	//SVE
@@ -51,16 +80,16 @@ int main(int argc, char* argv[]) {
 		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_SVE";
 	}
 	command = "gcc -c -x c -O3 -march=armv8-a+sve" + argument + " " + filePath + fileName 
-		+ ".c -o " + filePath + "_IFUNCER_" + fileName + "_SVE"+ ".o";
+		+ ".c -o " + outPath + "_IFUNCER_" + outName + "_SVE"+ ".o";
 	cout << command << '\n';
 	system(command.c_str());
-	//Advanced/NEON
+	//Advanced SIMD
 	argument = "";
 	for (long unsigned int i = 0; i < functions.size(); i++) {
-		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_NEON";
+		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_SIMD";
 	}
 	command = "gcc -c -x c -O3 -march=armv8-a+simd" + argument + " " + filePath + fileName 
-		+ ".c -o " + filePath + "_IFUNCER_" + fileName + "_NEON"+ ".o";
+		+ ".c -o " + outPath + "_IFUNCER_" + outName + "_SIMD"+ ".o";
 	cout << command << '\n';	
 	system(command.c_str());
 	//Standard/NO SIMD
@@ -68,8 +97,8 @@ int main(int argc, char* argv[]) {
 	for (long unsigned int i = 0; i < functions.size(); i++) {
 		argument = argument + " -D" + *functions[i] + "=_IFUNCER_" + *functions[i] + "_NONE";
 	}
-	command = "gcc -c -x c -O3 -march=armv8-a+simd" + argument + " " + filePath + fileName 
-		+ ".c -o " + filePath + "_IFUNCER_" + fileName + "_NONE"+ ".o";
+	command = "gcc -c -x c -O3 -march=armv8" + argument + " " + filePath + fileName 
+		+ ".c -o " + outPath + "_IFUNCER_" + outName + "_NONE"+ ".o";
 	cout << command << '\n';
 	system(command.c_str());
 	
@@ -85,22 +114,22 @@ int main(int argc, char* argv[]) {
 	}
 	for (long unsigned int i = 0; i < functions.size(); i++) {
 		string fName = *functions[i];
-		replaceFile(sourcePath + "_resolver.c", filePath + "_IFUNCER_RESOLVE_" + fName + ".c", "$", fName);
-		command = "gcc -c -x c " + filePath + "_IFUNCER_RESOLVE_" + fName + ".c";
+		replaceFile(sourcePath + "_resolver.c", outPath + "_IFUNCER_RESOLVE_" + fName + ".c", "$", fName);
+		command = "gcc -c -x c " + outPath + "_IFUNCER_RESOLVE_" + fName + ".c";
 		system(command.c_str());
 	}
 	//whew, laddie
-	command = "ld -r -o " + fileName + ".o";
+	command = "ld -r -o " + outName + ".o";
 	for (long unsigned int i = 0; i < functions.size(); i++) {
-		command = command + " " + filePath + "_IFUNCER_RESOLVE_" + *functions[i] + ".o";
-		command = command + " " + filePath + "_IFUNCER_" + fileName + "_NONE"+ ".o";
-		command = command + " " + filePath + "_IFUNCER_" + fileName + "_NEON"+ ".o";
-		command = command + " " + filePath + "_IFUNCER_" + fileName + "_SVE"+ ".o";
-		command = command + " " + filePath + "_IFUNCER_" + fileName + "_SVE2"+ ".o";
+		command = command + " " + outPath + "_IFUNCER_RESOLVE_" + *functions[i] + ".o";
+		command = command + " " + outPath + "_IFUNCER_" + outName + "_NONE"+ ".o";
+		command = command + " " + outPath + "_IFUNCER_" + outName + "_SIMD"+ ".o";
+		command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE"+ ".o";
+		command = command + " " + outPath + "_IFUNCER_" + outName + "_SVE2"+ ".o";
 	}
 	cout << command << '\n';
 	system(command.c_str());
-	cleanup(filePath);
+	cleanup(outPath);
 	return 0;
 }
 

@@ -3,6 +3,8 @@
         "memory": "cpp",
         "vector": "cpp",
         "array": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "iostream": "cpp",
+        "filesystem": "cpp"
     }
 }
